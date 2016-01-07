@@ -1,5 +1,5 @@
 var t = require('taringajs');
-var taringa = new t('USERNAME', 'PASSWORD');
+var taringa = new t('USUARIO', 'PASSWORD');
 var _ = require('lodash');
 var async = require('async');
 
@@ -14,8 +14,14 @@ taringa.on('logged',()=>{
 			var unfollowUsers= _.difference(results['followings'],results['followers']);
 
 			async.forEachOf(unfollowUsers, (value, key, next) =>{
-			  taringa.user.unfollow(value);
-			  next();
+			  taringa.request('http://api.taringa.net/user/view/'+value,function(err,res,body){
+			  	if(!err){
+			  		taringa.user.unfollow(value);
+			  		console.log('dejaste de seguir a : ', JSON.parse(body).nick);
+			  	}
+			  	next();
+			  });
+			  
 			}, (err) => {
 			  if (err) console.error(err.message);
 
@@ -31,7 +37,7 @@ taringa.on('logged',()=>{
 
 var getUsers=(cb)=>{
 
-	taringa.user.getStats(null,(err,data)=>{console.log(data);
+	taringa.user.getStats(null,(err,data)=>{
 		if(err)
 			return cb(error);
 
@@ -47,7 +53,7 @@ var getUsers=(cb)=>{
 		for(var i =1 ; i<=followersPages;i++){
 			arr2[i-1]=i;
 		}
-		console.log(arr,arr2);
+		
 		var followings = [];
 		var followers = [];
 
@@ -78,7 +84,6 @@ var getUsers=(cb)=>{
 			function(err){
 				if(err)
 					return console.log(err);
-
 			return cb(null,{followers:_.pluck(followers,'id'),followings:_.pluck(followings,'id')});
 		})		
 	})
