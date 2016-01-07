@@ -1,50 +1,85 @@
 var t = require('taringajs');
-var taringa = new t('USER_NAME', 'PASSWORD');
+var taringa = new t('USERNAME', 'PASSWORD');
 var _ = require('lodash');
 var async = require('async');
 
 taringa.on('logged',()=>{
 
-	async.series([
-		getListFollowers,
-		getListFollowings
-		],(err,results)=>{
-			if(err)
-				console.log(err);
-			else{
+	getUsers(function(err,results){
 
-				results = {'followers':results[0], 'followings':results[1] };
+		if(err)
+			console.log(err);
+		else{
 
-				var unfollowUsers= _.difference(results['followings'],results['followers']);
+			var unfollowUsers= _.difference(results['followings'],results['followers']);
 
-				async.forEachOf(unfollowUsers, (value, key, next) =>{
-				  taringa.user.unfollow(value);
-				  next();
-				}, (err) => {
-				  if (err) console.error(err.message);
+			async.forEachOf(unfollowUsers, (value, key, next) =>{
+			  taringa.user.unfollow(value);
+			  next();
+			}, (err) => {
+			  if (err) console.error(err.message);
 
-				  	console.log("Altoke perro, dejaste de seguir a los que no te seguian!! \n ");
-					  
-				})
-			}
-		});
+			  	console.log("Altoke perro, dejaste de seguir a los que no te seguian!! \n ");
+				  
+			})
+		}
+
+	})
+		
 });
 
-var getListFollowers=(callback)=>{
 
-	taringa.user.getFollowers(null,(err,data)=>{
+var getUsers=(cb)=>{
 
-		return callback(null,_.pluck(data,'id'));
-		
-	});
+	taringa.user.getStats(null,(err,data)=>{console.log(data);
+		if(err)
+			return cb(error);
+
+		var followingsPages = Math.ceil(data.followings  / 50 );
+		var followersPages = Math.ceil(data.followers / 50 );
+		var arr = [];
+		var arr2 = [];
+
+		for(var i =1 ; i<=followingsPages;i++){
+			arr[i-1]=i;
+			
+		}
+		for(var i =1 ; i<=followersPages;i++){
+			arr2[i-1]=i;
+		}
+		console.log(arr,arr2);
+		var followings = [];
+		var followers = [];
+
+		async.series([
+			function(callback){
+				async.forEach(arr,(page,next)=>{
+					taringa.user.getFollowings(null,page,(err,data)=>{
+						followings = followings.concat(data);
+						next();		
+					});
+				},function(err){
+					if(!err)
+						callback();
+				})	
+			},function(callback){
+
+				async.forEach(arr2,(page,next)=>{
+					taringa.user.getFollowers(null,page,(err,data)=>{
+						followers = followers.concat(data);
+						next();
+					});	
+				},function(err){
+					if(!err)
+						callback();
+				})	
+			}],
+
+			function(err){
+				if(err)
+					return console.log(err);
+
+			return cb(null,{followers:_.pluck(followers,'id'),followings:_.pluck(followings,'id')});
+		})		
+	})
 };
-
-var getListFollowings=(callback)=>{
-
-	taringa.user.getFollowings(null,(err,data)=>{
-
-		return callback(null,_.pluck(data,'id'));
-
-	});	
-}
-
