@@ -3,6 +3,8 @@ var taringa = new t('USUARIO', 'PASSWORD');
 var _ = require('lodash');
 var async = require('async');
 
+var interval = 1; 
+
 taringa.on('logged',()=>{
 
 	getUsers(function(err,results){
@@ -13,15 +15,19 @@ taringa.on('logged',()=>{
 
 			var unfollowUsers= _.difference(results['followings'],results['followers']);
 
-			async.forEachOf(unfollowUsers, (value, key, next) =>{
-			  taringa.request('http://api.taringa.net/user/view/'+value,function(err,res,body){
-			  	if(!err){
+			async.forEachOfSeries(unfollowUsers, (value, key, next) =>{
+
+			  setTimeout(()=>{
+				taringa.request('http://api.taringa.net/user/view/'+value,function(err,res,body){
+			  	 if(!err){
 			  		taringa.user.unfollow(value);
 			  		console.log('dejaste de seguir a : ', JSON.parse(body).nick);
-			  	}
-			  	next();
-			  });
-			  
+			  	 }
+			  	 next();
+			    });
+			    	
+			  },interval*1000);	
+			
 			}, (err) => {
 			  if (err) console.error(err.message);
 
